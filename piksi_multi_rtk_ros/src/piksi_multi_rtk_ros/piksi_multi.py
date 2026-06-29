@@ -547,8 +547,16 @@ class PiksiMulti:
                     if (sbp_message.flags & 0x07) == 0:
                         return  # Invalid message, do not publish it.
 
-                setattr(ros_message, attr, getattr(sbp_message, attr))
-            pub.publish(ros_message)
+                value = getattr(sbp_message, attr)
+                # SBP library may deliver string fields as bytes in Python 3.
+                # ROS message serialization expects str for string fields.
+                if isinstance(value, bytes):
+                    value = value.decode('utf-8', errors='replace')
+                setattr(ros_message, attr, value)
+            try:
+                pub.publish(ros_message)
+            except Exception as e:
+                rospy.logwarn_throttle(10, "Failed to publish SBP message: %s" % str(e))
 
         return callback
 
